@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+client/dist/
+server/dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Uploads (video files — large, don't commit)
+server/uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.DS_Store
+Thumbs.db
