@@ -1,0 +1,97 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"  
+  extensions = [pg_stat_statements, pgcrypto, supabase_vault, uuidOssp(map: "uuid-ossp"), vector]
+}
+
+enum LectureStatus {
+  UPLOADING
+  PROCESSING
+  DONE
+  ERROR
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  lectures  Lecture[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lecture {
+  id           String         @id @default(cuid())
+  title        String
+  filename     String         // nama file di storage
+  originalName String
+  size         Int
+  status       LectureStatus  @default(UPLOADING)
+  userId       String?
+  user         User?          @relation(fields: [userId], references: [id])
+  timestamps   Timestamp[]
+  summary      LectureSummary?
+  transcription Transcript?
+  chatMessages ChatMessage[]
+  chunks       Chunk[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Timestamp {
+  id        String   @id @default(cuid())
+  lectureId String
+  lecture   Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  time      Float    // detik
+  label     String
+  tag       String?  // "definition", "example", "exam" dll
+  color     String?  // kode warna hex
+  createdAt DateTime @default(now())
+}
+
+model LectureSummary {
+  id        String   @id @default(cuid())
+  lectureId String   @unique
+  lecture   Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  content   Json     // objek summary terstruktur
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transcript {
+  id        String   @id @default(cuid())
+  lectureId String   @unique
+  lecture   Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  fullText  String
+  segments  Json     // array segmen { start, end, text }
+  createdAt DateTime @default(now())
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  lectureId String
+  lecture   Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  role      ChatRole
+  content   String
+  timestamp Float?   // timestamp referensi video
+  createdAt DateTime @default(now())
+}
+
+model Chunk {
+  id        String   @id @default(cuid())
+  lectureId String
+  lecture   Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  content   String
+  embedding Json?    // nanti untuk vektor
+  metadata  Json?    // start/end time, dll
+  createdAt DateTime @default(now())
+}

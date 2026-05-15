@@ -1,33 +1,37 @@
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
-const UPLOADS_DIR = path.join(__dirname, "../../uploads");
-
-// Ensure uploads directory exists
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+// Pastikan folder tujuan tersedia secara otomatis
+const uploadDir = path.join(__dirname, '../../uploads/videos');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// Konfigurasi engine penyimpanan lokal
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}${path.extname(file.originalname)}`);
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
   },
+  filename: (req, file, cb) => {
+    // Format: timestamp-random-namaasli.mp4 (mencegah duplikasi nama)
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `lecture-${uniqueSuffix}${ext}`);
+  }
 });
 
-const fileFilter = (_req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowed = ["video/mp4", "video/quicktime", "video/x-msvideo"];
-  if (allowed.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Only MP4, MOV, and AVI video files are allowed"));
-  }
-};
-
-export const upload = multer({
+// Inisialisasi multer dengan filter dan batasan ukuran
+export const upload = multer({ 
   storage,
-  fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2 GB max
+  limits: {
+    fileSize: 500 * 1024 * 1024, // Batas maksimal 500 MB per video
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'video/mp4') {
+      cb(null, true);
+    } else {
+      cb(new Error('Hanya file MP4 yang diperbolehkan!'));
+    }
+  }
 });
