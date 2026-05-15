@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Upload, User, Zap, Menu, X } from "lucide-react";
+import { useState, useRef } from "react";
+import { Upload, User, Zap, Menu, X, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { uploadVideo } from "../../services/api"; // Sesuaikan path ini dengan lokasi api.ts Anda
 
 interface LZHeaderProps {
   sidebarOpen: boolean;
@@ -8,6 +10,36 @@ interface LZHeaderProps {
 
 export function LZHeader({ sidebarOpen, onToggleSidebar }: LZHeaderProps) {
   const [uploadHover, setUploadHover] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+
+  // Memicu input file tersembunyi saat tombol kustom ditekan
+  const handleUploadClick = () => {
+    if (!isUploading) {
+      fileInputRef.current?.click();
+    }
+  };
+
+  // Mengirim file ke backend dan melakukan navigasi
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      const result = await uploadVideo(file);
+      navigate(`/lecture/${result.lectureId}`);
+    } catch (error) {
+      console.error("Upload gagal:", error);
+      alert("Gagal mengunggah video. Periksa koneksi ke server backend.");
+    } finally {
+      setIsUploading(false);
+      // Reset input agar bisa memilih file yang sama lagi jika gagal
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <header
@@ -91,24 +123,46 @@ export function LZHeader({ sidebarOpen, onToggleSidebar }: LZHeaderProps) {
 
       {/* Right section */}
       <div className="relative z-10 flex items-center gap-3">
+        {/* Hidden File Input */}
+        <input 
+          type="file" 
+          accept="video/mp4" 
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          onChange={handleFileChange} 
+        />
+
         {/* Upload CTA */}
         <button
+          onClick={handleUploadClick}
           onMouseEnter={() => setUploadHover(true)}
           onMouseLeave={() => setUploadHover(false)}
-          className="flex items-center gap-2 px-4 py-2 uppercase cursor-pointer transition-all duration-100"
+          disabled={isUploading}
+          className="flex items-center gap-2 px-4 py-2 uppercase transition-all duration-100"
           style={{
             fontFamily: "'Bangers', cursive",
             fontSize: "1.1rem",
             letterSpacing: "0.06em",
-            backgroundColor: uploadHover ? "#000" : "#FFF9E6",
-            color: uploadHover ? "#FFCC00" : "#000",
+            backgroundColor: isUploading ? "#FFCC00" : (uploadHover ? "#000" : "#FFF9E6"),
+            color: isUploading ? "#000" : (uploadHover ? "#FFCC00" : "#000"),
             border: "3px solid #000",
-            boxShadow: uploadHover ? "6px 6px 0px #000" : "4px 4px 0px #000",
-            transform: uploadHover ? "translate(-2px, -2px)" : "translate(0,0)",
+            boxShadow: uploadHover && !isUploading ? "6px 6px 0px #000" : "4px 4px 0px #000",
+            transform: uploadHover && !isUploading ? "translate(-2px, -2px)" : "translate(0,0)",
+            cursor: isUploading ? "wait" : "pointer",
+            opacity: isUploading ? 0.8 : 1
           }}
         >
-          <Upload size={16} strokeWidth={3} />
-          Upload Video
+          {isUploading ? (
+            <>
+              <Loader2 size={16} strokeWidth={3} className="animate-spin" />
+              Memproses...
+            </>
+          ) : (
+            <>
+              <Upload size={16} strokeWidth={3} />
+              Upload Video
+            </>
+          )}
         </button>
 
         {/* Avatar */}
